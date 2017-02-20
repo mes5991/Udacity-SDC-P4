@@ -2,19 +2,34 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+import os
 
 def undistort(img, mtx, dist):
     undist = cv2.undistort(img, mtx, dist, None, mtx)
     return undist
 
-# def transform(img):
-#     offset = 0
-#     img_size = (img.shape[1], img.shape[0])
-#     src = np.float32([(585-offset,460), (203-offset,720), (1127+offset,720), (695+offset,460)])
-#     dst = np.float32([[320, 0], [320, 720], [690, 720], [960, 0]])
-#     M = cv2.getPerspectiveTransform(src, dst)
-#     warped = cv2.warpPerspective(img, M, img_size)
-#     return warped
+def test_transform(folder_path, mtx, dist):
+    imgs = os.listdir(folder_path)
+    for i in imgs:
+        img_path = folder_path + i
+        img = mpimg.imread(img_path)
+        undist = undistort(img, mtx, dist)
+        warped, dst, src = transform(undist)
+
+        undist = draw_lines(undist, src, (255,0,0))
+        undist = draw_lines(undist, dst, (0,255,0))
+        warped = draw_lines(warped, dst, (255,0,0))
+
+        plt.subplot(1,3,1)
+        plt.imshow(img)
+        plt.title("Original Image")
+        plt.subplot(1,3,2)
+        plt.imshow(undist)
+        plt.title("Unwarped image with transform lines")
+        plt.subplot(1,3,3)
+        plt.imshow(warped)
+        plt.title("Transformed image with transform lines")
+        plt.show()
 
 def transform(img):
     offset = 0
@@ -30,20 +45,6 @@ def transform(img):
     M = cv2.getPerspectiveTransform(src, dst)
     warped = cv2.warpPerspective(img, M, img_size)
     return warped, dst, src
-
-def test_transform(img, nx=9, ny=6):
-    img_size = (img.shape[1], img.shape[0])
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    ret, corners = cv2.findChessboardCorners(gray, (nx,ny), None)
-    offset = 100
-    src = np.float32([corners[0], corners[nx-1], corners[-1], corners[-nx]])
-    dst = np.float32([[offset, offset], [img_size[0]-offset, offset],
-                                     [img_size[0]-offset, img_size[1]-offset],
-                                     [offset, img_size[1]-offset]])
-
-    M = cv2.getPerspectiveTransform(src, dst)
-    warped = cv2.warpPerspective(img, M, img_size)
-    return warped
 
 def display_image(img):
     plt.imshow(img)
