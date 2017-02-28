@@ -3,8 +3,8 @@ import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
 
-def sliding_window(warped, left_fit, right_fit):
-    if left_fit == None:
+def sliding_window(warped, warped_original, left_line, right_line, plot = False):
+    if (left_line.detected == False) or (right_line.detected == False):
         # Take a histogram of the bottom half of the image
         histogram = np.sum(warped[warped.shape[0]/2:,:], axis=0)
 
@@ -80,24 +80,40 @@ def sliding_window(warped, left_fit, right_fit):
         # Fit a second order polynomial to each
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
-        plot_slide_initial(warped, out_img, left_fit, right_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
-        return left_fit, right_fit
+        left_line.appendNewFit(left_fit)
+        right_line.appendNewFit(right_fit)
+        left_line.getAverageFit()
+        right_line.getAverageFit()
+        left_line.detected = True
+        right_line.detected = True
+
+        # plot_slide_initial(warped, out_img, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
+        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
+        # left_curve_rad, right_curve_rad = get_curvature(lefty, leftx, righty, rightx)
 
     else:
         nonzero = warped.nonzero()
         nonzeroy = np.array(nonzero[0])
         nonzerox = np.array(nonzero[1])
         margin = 100
-        left_lane_inds = ((nonzerox > (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] - margin)) & (nonzerox < (left_fit[0]*(nonzeroy**2) + left_fit[1]*nonzeroy + left_fit[2] + margin)))
-        right_lane_inds = ((nonzerox > (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] - margin)) & (nonzerox < (right_fit[0]*(nonzeroy**2) + right_fit[1]*nonzeroy + right_fit[2] + margin)))
+        left_lane_inds = ((nonzerox > (left_line.current_fit[0]*(nonzeroy**2) + left_line.current_fit[1]*nonzeroy + left_line.current_fit[2] - margin)) & (nonzerox < (left_line.current_fit[0]*(nonzeroy**2) + left_line.current_fit[1]*nonzeroy + left_line.current_fit[2] + margin)))
+        right_lane_inds = ((nonzerox > (right_line.current_fit[0]*(nonzeroy**2) + right_line.current_fit[1]*nonzeroy + right_line.current_fit[2] - margin)) & (nonzerox < (right_line.current_fit[0]*(nonzeroy**2) + right_line.current_fit[1]*nonzeroy + right_line.current_fit[2] + margin)))
         leftx = nonzerox[left_lane_inds]
         lefty = nonzeroy[left_lane_inds]
         rightx = nonzerox[right_lane_inds]
         righty = nonzeroy[right_lane_inds]
         left_fit = np.polyfit(lefty, leftx, 2)
         right_fit = np.polyfit(righty, rightx, 2)
-        plot_slide(warped, left_fit, right_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds, margin)
-        return left_fit, right_fit
+        left_line.appendNewFit(left_fit)
+        right_line.appendNewFit(right_fit)
+        left_line.getAverageFit()
+        right_line.getAverageFit()
+
+        # plot_slide(warped, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds, margin)
+        # left_curve_rad, right_curve_rad = get_curvature(lefty, leftx, righty, rightx)
+        # print("left_curve_rad: ", left_curve_rad)
+        # print("right_curve_rad: ", right_curve_rad)
+        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
 
 def plot_slide_initial(warped, out_img, left_fit, right_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds):
     # Generate x and y values for plotting
@@ -146,3 +162,40 @@ def plot_slide(warped, left_fit, right_fit, nonzeroy, nonzerox, left_lane_inds, 
     plt.ylim(720, 0)
     plt.pause(.01)
     plt.clf()
+
+def get_curvature(lefty, leftx, righty, rightx):
+    ym_per_pix = 30/720
+    xm_per_pix = 3.7/700
+    y_eval = np.max(lefty)
+    #Fit polynomials in world space
+    left_fit = np.polyfit(lefty*ym_per_pix, leftx*xm_per_pix, 2)
+    right_fit = np.polyfit(righty*ym_per_pix, rightx*xm_per_pix, 2)
+
+    #Calculate radii of curvature
+    left_curve_rad = ((1 + (2 * left_fit[0] * y_eval * ym_per_pix + left_fit[1])**2)**1.5) / np.absolute(2 * left_fit[0])
+    right_curve_rad = ((1 + (2 * right_fit[0] * y_eval * ym_per_pix + right_fit[1])**2)**1.5) / np.absolute(2 * right_fit[0])
+
+    return(left_curve_rad, right_curve_rad)
+
+def drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds):
+    ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
+    left_fitx = left_line.current_fit[0]*ploty**2 + left_line.current_fit[1]*ploty + left_line.current_fit[2]
+    right_fitx = right_line.current_fit[0]*ploty**2 + right_line.current_fit[1]*ploty + right_line.current_fit[2]
+
+    # Create an image to draw on and an image to show the selection window
+    out_img = warped_original
+    window_img = np.zeros_like(out_img)
+
+    # Generate a polygon to illustrate the search window area
+    # And recast the x and y points into usable format for cv2.fillPoly()
+    left_line_window1 = np.array([np.transpose(np.vstack([left_fitx, ploty]))])
+    right_line_window2 = np.array([np.flipud(np.transpose(np.vstack([right_fitx, ploty])))])
+    window = np.hstack((left_line_window1, right_line_window2))
+    cv2.fillPoly(window_img, np.int_([window]), (0,255, 0))
+    return window_img
+    # result = cv2.addWeighted(frame, 1, window_img_transform, 0.3, 0)
+    # plt.imshow(result)
+    # plt.xlim(0, 1280)
+    # plt.ylim(720, 0)
+    # plt.pause(.01)
+    # plt.clf()

@@ -8,7 +8,7 @@ from calibration import *
 from transform import *
 from imageProcessing import *
 from lineFinder import *
-
+from Line import Line
 options = sys.argv
 
 #Calibrate camera
@@ -22,20 +22,17 @@ def image_pipeline(img):
     undist = normalize(undist)
 
     #Warp perspective
-    warped, dst, src = transform1(undist)
+    warped, dst, src, Minv = transform1(undist)
 
     #Threshold to generate binary image where lane lines are clear
-    threshold_img = thresh_pipeline(warped)
-
-    #Mask image to region of interest
-    # masked = region_of_interest(threshold_img)
-
-    kernel = np.ones((9,9),np.uint8)
+    threshold_img = thresh_pipeline(warped)[0]
+    # result = threshold_img
+    kernel = np.ones((5,5),np.uint8)
     result = cv2.morphologyEx(threshold_img, cv2.MORPH_OPEN, kernel)
     kernel = np.ones((10,10),np.uint8)
     result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
 
-    return result, threshold_img, warped, undist
+    return result, threshold_img, warped, undist, Minv
 
 #Testing below
 if 'test_calibration' in options:
@@ -73,7 +70,36 @@ if 'test_thresh' in options:
     test_imgs = os.listdir(test_path)
     for i in test_imgs:
         img_path = test_path + '/' + i
-        test_thresh(img_path, S_thresh=(160,255), gradx_thresh=(20,150))
+        img = mpimg.imread(img_path)
+        undist = undistort(img, mtx, dist)
+        undist = cv2.GaussianBlur(undist, (5,5), 0)
+        undist = normalize(undist)
+        warped, dst, src = transform1(undist)
+
+        combined_binary, gradx, sbinary, gray_binary, morphed, masked, mag_binary = thresh_pipeline(warped)
+
+        plt.subplot(3,3,1)
+        plt.imshow(warped)
+        plt.title("warped")
+        plt.subplot(3,3,2)
+        plt.imshow(gradx, cmap='gray')
+        plt.title("grax")
+        plt.subplot(3,3,3)
+        plt.imshow(sbinary, cmap='gray')
+        plt.title("sbinary")
+        plt.subplot(3,3,4)
+        plt.imshow(gray_binary, cmap='gray')
+        plt.title("gray_binary")
+        plt.subplot(3,3,5)
+        plt.imshow(masked, cmap='gray')
+        plt.title("gray_binary_morphed")
+        plt.subplot(3,3,6)
+        plt.imshow(mag_binary, cmap='gray')
+        plt.title("mag_binary")
+        plt.subplot(3,3,7)
+        plt.imshow(combined_binary, cmap='gray')
+        plt.title("combined_binary")
+        plt.show()
 
 if 'images_hls' in options:
     test_path = r"C:\Users\mes59\Documents\Udacity\SDC\Term 1\Project 4\CarND-Advanced-Lane-Lines\test_images"
@@ -94,28 +120,6 @@ if 'images_hls' in options:
         plt.imshow(L)
         plt.subplot(2,2,4)
         plt.imshow(S)
-        plt.show()
-
-if "test_roi" in options:
-    test_path = r"C:\Users\mes59\Documents\Udacity\SDC\Term 1\Project 4\CarND-Advanced-Lane-Lines\test_images"
-    test_imgs = os.listdir(test_path)
-    for i in test_imgs:
-        img_path = test_path + '/' + i
-        img = mpimg.imread(img_path)
-        test_roi(img)
-
-if 'temp' in options:
-    test_path = r"C:\Users\mes59\Documents\Udacity\SDC\Term 1\Project 4\CarND-Advanced-Lane-Lines\test_images"
-    test_imgs = os.listdir(test_path)
-    for i in test_imgs:
-        img_path = test_path + '/' + i
-        img = mpimg.imread(img_path)
-        blur = cv2.GaussianBlur(img, (5,5), 0)
-        plt.figure(figsize=(20,10))
-        plt.subplot(1,2,1)
-        plt.imshow(img)
-        plt.subplot(1,2,2)
-        plt.imshow(blur)
         plt.show()
 
 if 'test_pipeline' in options:
@@ -141,22 +145,30 @@ if 'test_video' in options:
     vid_path = r'C:\Users\mes59\Documents\Udacity\SDC\Term 1\Project 4\CarND-Advanced-Lane-Lines\project_video.mp4'
     # vid_path = r'C:\Users\mes59\Documents\Udacity\SDC\Term 1\Project 4\CarND-Advanced-Lane-Lines\harder_challenge_video.mp4'
     cap = cv2.VideoCapture(vid_path)
-    left_fit = None
-    right_fit = None
+    fourcc = cv2.VideoWriter_fourcc(*'DIVX')
+    videoout = cv2.VideoWriter('output.avi',fourcc, 30.0,( 1280,720))
+    # left_fit = None
+    # right_fit = None
+    left_line = Line()
+    right_line = Line()
+    i=0
     while(cap.isOpened()):
+        i += 1
         ret, frame = cap.read()
-        warped, undist, masked = image_pipeline(frame)
-        histogram = warped.shape[0] - np.sum(warped[warped.shape[0]/2:,:], axis=0) - 1
-        warped[warped > 0] = 255
-        masked[masked > 0] = 255
-        # warped = cv2.cvtColor(warped, cv2.COLOR_GRAY2BGR)
-        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2GRAY)
+        # print(i)
+        # if i < 500:
+        #     continue
+        result, threshold_img, warped, undist, Minv = image_pipeline(frame)
+        # result[result > 0] = 255
 
-        plt.ion()
-        left_fit, right_fit = sliding_window(warped, left_fit, right_fit)
+        # plt.ion()
+        green_space = sliding_window(result, warped, left_line, right_line, plot = False)
+        green_space_transform = cv2.warpPerspective(green_space, Minv, (green_space.shape[1], green_space.shape[0]))
+        output = cv2.addWeighted(frame, 1, green_space_transform, 0.3, 0)
 
+        videoout.write(output)
         # cv2.imshow('Video', frame)
-        # cv2.imshow('warped', warped)
+    #     cv2.imshow('output', output)
     #     if cv2.waitKey(1) & 0xFF == ord('q'):
     #         break
     # cap.release()
@@ -181,5 +193,5 @@ if 'test_slide' in options:
     for i in test_imgs:
         img_path = test_path + '/' + i
         img = mpimg.imread(img_path)
-        warped, undist, masked = image_pipeline(img)
-        sliding_window(warped)
+        result, threshold_img, warped, undist = image_pipeline(img)
+        sliding_window(result)
