@@ -5,7 +5,7 @@
     - [Perspective Transform](#perspective-transform)
     - [Binary Thresholding](#binary-thresholding)
     - [Polynomial Fitting](#polynomial-fitting)
-    - [Radius of Curvature / Vehicle Position](#radius-of-curvature/vehicle-position)
+    - [Radius of Curvature / Vehicle Position](#radius-of-curvature--vehicle-position)
     - [Transform Back To Camera Perspective](#transform-back-to-camera-perspective)
   - [Video Output](#video-output)
   - [Discussion](#discussion)
