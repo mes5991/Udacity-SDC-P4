@@ -36,7 +36,7 @@ This data is computed for a series of images from different camera perspectives,
 
 This calibration only needs to happen once at the beginning of the image processing pipeline. The code can be found in calibration.py. Below is one example of an undistorted checkerboard image.
 
-![Undistorted Checkerboard](Images\Calibration\calibrate2.png)
+![Undistorted Checkerboard](Images/Calibration/calibrate2.png)
 
 ##Pipeline
 An image processing pipeline was implemented to process each frame of the provided video. The top-level pipeline implementation can be found in main.py. Each step in the pipeline will be described below.
@@ -44,7 +44,7 @@ An image processing pipeline was implemented to process each frame of the provid
 ###Distortion-corrected Frame
 Each frame in the video must first be corrected for camera distortion using the calibration and distortion coefficients previously calculated. Below is an example of an undistorted test image:
 
-![Undistorted Test Image](Images\Calibration\test1.png)
+![Undistorted Test Image](Images/Calibration/test1.png)
 
 ###Perspective Transform
 After the image has been corrected for camera distortion, it is transformed to a birds-eye view perspective. This is achieved by mapping pixel coordinates in the real space to pixel coordinates in the image plane. Pixel coordinates were chosen based on image size:
@@ -64,7 +64,7 @@ dst = np.float32([[(img_size[0] / 4), 0],
 ```
 OpenCV's `getPerspectiveTransform` and `warpPerspective` functions make calculating the perspective transformation matrices and transforming and image very simple. This code can be found in transform.py. Below is an example of a transformed image, in which the red lines represent the coordinates in the real space, and the green lines represent the coordinates in the image plane:
 
-![Transformed Image](Images\Lane transform tests\transform1\lane_transform1.png)
+![Transformed Image](Images/Lane transform tests/transform1/lane_transform1.png)
 
 ###Binary Thresholding
 After perspective transformation to a birds-eye view, the image was processed to identify lane lines. A combination of gradient thresholding and color thresholding was implemented to produce a binary image in which the lane lines were obvious.
@@ -72,12 +72,12 @@ After perspective transformation to a birds-eye view, the image was processed to
 In particular, I made use of a sobel operator in the x direction, a threshold on the "S" layer of the image after converting to HLS color space, and a threshold on the gray-scaled image. Additionally, OpenCV's morphology functions were utilized to clean up some of the noise produces from thresholding. The thresholding pipeline can be found in the `thresh_pipeline()` function in the imageProcessing.py file.
 
 Below are subplots showing the thresholding process:
-![Thresholded Image](Images\Thresholding\thresh4.png)
+![Thresholded Image](Images/Thresholding/thresh4.png)
 
 ###Polynomial Fitting
 After binary processing has been performed to make lane lines clear, a polynomial was fitted to each lane line. This is achieved by using a sliding window approach as presented in the Udacity lectures. First, a histogram of the binary image is generated:
 
-![Histogram](Images\Histogram\hist1.png)
+![Histogram](Images/Histogram/hist1.png)
 
 The histogram information is utilized to find max peaks on the left and right side of the image with respect to the camera center. These peaks represent the start of the left and right lane lines at the bottom of the image. The location of these peaks are used as the start of the sliding window search algorithm.
 
@@ -87,7 +87,7 @@ In order to smooth the transitions between frames, the polynomial is computed fr
 
 Below is an image showing the sliding window approach and fitted polynomials:
 
-![Sliding Window](Images\Polynomial\poly1.png)
+![Sliding Window](Images/Polynomial/poly1.png)
 
 ###Radius of Curvature / Vehicle Position
 Next, the radius of curvature and vehicle position with respect to center is calculated from the fitted polynomials. This is done simply with the following functions:
@@ -122,7 +122,7 @@ At this point, we have all the necessary information to project lane lines back 
 
 Below is an example of the transform back to camera perspective with a transparent lane:
 
-![Final Output](Images\Final output\output.PNG)
+![Final Output](Images/Final output/output.PNG)
 
 ##Video Output
 The entire video was run through the lane line finding pipeline, and the output was saved.
