@@ -19,7 +19,7 @@ def test_transform(folder_path, mtx, dist):
         undist = undistort(img, mtx, dist)
 
         #Transform perspective to birds-eye-view
-        warped, dst, src = transform2(undist)
+        warped, dst, src, Minv = transform(undist)
 
         #Draw transformation lines and plot
         undist = draw_lines(undist, src, (255,0,0))
@@ -36,7 +36,7 @@ def test_transform(folder_path, mtx, dist):
         plt.title("Transformed image with transform lines")
         plt.show()
 
-def transform1(img):
+def transform(img):
     offset = 0 #for quick modification
     img_size = (img.shape[1], img.shape[0])
 
@@ -56,26 +56,6 @@ def transform1(img):
     Minv = cv2.getPerspectiveTransform(dst, src)
     warped = cv2.warpPerspective(img, M, img_size)
     return warped, dst, src, Minv
-
-def transform2(img):
-    offset = 0 #for quick modification
-    img_size = (img.shape[1], img.shape[0])
-
-    #points in the real space
-    src = np.float32([[580,460],
-                      [700,460],
-                      [1040,680],
-                      [260,680]])
-
-    #points on the image plane
-    dst = np.float32([[260,0],
-                      [1040,0],
-                      [1040,720],
-                      [260,720]])
-
-    M = cv2.getPerspectiveTransform(src, dst)
-    warped = cv2.warpPerspective(img, M, img_size)
-    return warped, dst, src
 
 def display_image(img):
     plt.imshow(img)

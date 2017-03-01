@@ -2,6 +2,23 @@ import numpy as np
 import cv2
 import matplotlib.pyplot as plt
 import matplotlib.image as mpimg
+from transform import *
+
+def image_pipeline(img, mtx, dist):
+    #Undistort the image
+    undist = undistort(img, mtx, dist)
+    undist = cv2.GaussianBlur(undist, (5,5), 0)
+    undist = normalize(undist)
+    #Warp perspective
+    warped, dst, src, Minv = transform(undist)
+    #Threshold to generate binary image where lane lines are clear
+    threshold_img = thresh_pipeline(warped)[0]
+    #Use morphology to clean up the binary image
+    kernel = np.ones((5,5),np.uint8)
+    result = cv2.morphologyEx(threshold_img, cv2.MORPH_OPEN, kernel)
+    kernel = np.ones((10,10),np.uint8)
+    result = cv2.morphologyEx(result, cv2.MORPH_CLOSE, kernel)
+    return result, threshold_img, warped, undist, Minv
 
 def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
@@ -16,21 +33,6 @@ def abs_sobel_thresh(img, orient='x', sobel_kernel=3, thresh=(0, 255)):
     # Create a copy and apply the threshold
     binary_output = np.zeros_like(scaled_sobel)
     binary_output[(scaled_sobel >= thresh[0]) & (scaled_sobel <= thresh[1])] = 1
-    return binary_output
-
-def mag_thresh(img, sobel_kernel=3, thresh=(0, 255)):
-    gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-    # Take both Sobel x and y gradients
-    sobelx = cv2.Sobel(gray, cv2.CV_64F, 1, 0, ksize=sobel_kernel)
-    sobely = cv2.Sobel(gray, cv2.CV_64F, 0, 1, ksize=sobel_kernel)
-    # Calculate the gradient magnitude
-    gradmag = np.sqrt(sobelx**2 + sobely**2)
-    # Rescale to 8 bit
-    scale_factor = np.max(gradmag)/255
-    gradmag = (gradmag/scale_factor).astype(np.uint8)
-    # Create a binary image of ones where threshold is met, zeros otherwise
-    binary_output = np.zeros_like(gradmag)
-    binary_output[(gradmag >= thresh[0]) & (gradmag <= thresh[1])] = 1
     return binary_output
 
 def dir_threshold(img, sobel_kernel=3, thresh=(0, np.pi/2)):
@@ -84,13 +86,6 @@ def threshold_s_channel(img, thresh=(90,255)):
     return binary, S
 
 def threshold_white(img, thresh=(190,255)):
-    # hls = cv2.cvtColor(img, cv2.COLOR_RGB2HLS)
-    # L = hls[:,:,1]
-    # result = np.zeros_like(L)
-    # result[(L > thresh[0]) & (L <= thresh[1])] = 1
-    #
-    # kernel = np.ones((17,17),np.uint8)
-    # result = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
     gray = cv2.cvtColor(img, cv2.COLOR_RGB2GRAY)
     result = np.zeros_like(gray)
     thresh = 175
@@ -99,16 +94,10 @@ def threshold_white(img, thresh=(190,255)):
         thresh += 1
         result = np.zeros_like(gray)
         result[gray > thresh] = 1
-    # print("Mean", np.mean(result))
-    if np.mean(result) > 100:
-        result = None
-        morphed = None
-        masked = None
-    else:
-        kernel = np.ones((25,25),np.uint8)
-        morphed = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
-        masked = np.copy(result)
-        masked[(result > 0) & (morphed > 0)] = 0
+    kernel = np.ones((25,25),np.uint8)
+    morphed = cv2.morphologyEx(result, cv2.MORPH_OPEN, kernel)
+    masked = np.copy(result)
+    masked[(result > 0) & (morphed > 0)] = 0
     return result, morphed, masked
 
 def test_color_thresholding(img, thresh):
@@ -133,18 +122,12 @@ def thresh_pipeline(img):
     gradx = abs_sobel_thresh(img, orient='x', thresh=(20,150))
     #get binary image from saturation threshold
     sbinary = threshold_s_channel(img, thresh=(130,255))[0]
+    #get binary image using grayscale
     gray_binary, morphed, masked = threshold_white(img)
-    mag_binary = mag_thresh(img, sobel_kernel=9, thresh=(50,255))
-    #combine binary images with OR
+    #combine binary images
     combined_binary = np.zeros_like(sbinary)
-    if gray_binary == None:
-        combined_binary[(gradx == 1) | (sbinary == 1)] = 1
-        gray_binary = np.zeros_like(combined_binary)
-        morphed = np.zeros_like(combined_binary)
-        masked = np.zeros_like(combined_binary)
-    else:
-        combined_binary[(gradx == 1) | (sbinary == 1) | (gray_binary == 1) | (masked == 1)] = 1
-    return combined_binary, gradx, sbinary, gray_binary, morphed, masked, mag_binary
+    combined_binary[(gradx == 1) | (sbinary == 1) | (gray_binary == 1) | (masked == 1)] = 1
+    return combined_binary, gradx, sbinary, gray_binary, morphed, masked
 
 
 def normalize(img):

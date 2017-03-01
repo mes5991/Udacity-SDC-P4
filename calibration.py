@@ -13,17 +13,7 @@ def calibrate_camera(plot=False):
     objp[:,:2] = np.mgrid[0:9, 0:6].T.reshape(-1,2) #Represent the coordinates of the real grid. This is the same for all images
 
     for i in range(1,21):
-        # if (i == 1):
-        #     n_corners = (9,5)
-        # elif (i == 4):
-        #     continue
-        # elif (i==5):
-        #     n_corners = (7,5)
-        # else:
-        #     n_corners = (9,6)
-
         n_corners = (9,6)
-
         #Read in image
         fname = calibration_path + str(i) + '.jpg'
         img = cv2.imread(fname)
@@ -59,8 +49,10 @@ def test_calibration(mtx, dist):
 
         plt.subplot(1,2,1)
         plt.imshow(img)
+        plt.title("Original Image")
         plt.subplot(1,2,2)
         plt.imshow(undist)
+        plt.title("Undistorted Image")
         plt.show()
 
 def test_calibration_single_image(mtx, dist, img_path):
@@ -69,6 +61,8 @@ def test_calibration_single_image(mtx, dist, img_path):
 
     plt.subplot(1,2,1)
     plt.imshow(img)
+    plt.title("Original Image")
     plt.subplot(1,2,2)
     plt.imshow(undist)
+    plt.title("Undistorted Image")
     plt.show()

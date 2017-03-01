@@ -87,9 +87,13 @@ def sliding_window(warped, warped_original, left_line, right_line, plot = False)
         left_line.detected = True
         right_line.detected = True
 
-        # plot_slide_initial(warped, out_img, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
-        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
-        # left_curve_rad, right_curve_rad = get_curvature(lefty, leftx, righty, rightx)
+        curvature = get_curvature(lefty, leftx, righty, rightx)
+        car_center = getCarCenter(left_line, right_line, warped)
+        if plot:
+            plot_slide_initial(warped, out_img, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
+            return None
+        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds), curvature, car_center
+
 
     else:
         nonzero = warped.nonzero()
@@ -109,11 +113,12 @@ def sliding_window(warped, warped_original, left_line, right_line, plot = False)
         left_line.getAverageFit()
         right_line.getAverageFit()
 
-        # plot_slide(warped, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds, margin)
-        # left_curve_rad, right_curve_rad = get_curvature(lefty, leftx, righty, rightx)
-        # print("left_curve_rad: ", left_curve_rad)
-        # print("right_curve_rad: ", right_curve_rad)
-        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds)
+        if plot:
+            plot_slide(warped, left_line.current_fit, right_line.current_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds, margin)
+            return None
+        curvature = get_curvature(lefty, leftx, righty, rightx)
+        car_center = getCarCenter(left_line, right_line, warped)
+        return drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds), curvature, car_center
 
 def plot_slide_initial(warped, out_img, left_fit, right_fit, nonzeroy, nonzerox, left_lane_inds, right_lane_inds):
     # Generate x and y values for plotting
@@ -174,8 +179,8 @@ def get_curvature(lefty, leftx, righty, rightx):
     #Calculate radii of curvature
     left_curve_rad = ((1 + (2 * left_fit[0] * y_eval * ym_per_pix + left_fit[1])**2)**1.5) / np.absolute(2 * left_fit[0])
     right_curve_rad = ((1 + (2 * right_fit[0] * y_eval * ym_per_pix + right_fit[1])**2)**1.5) / np.absolute(2 * right_fit[0])
-
-    return(left_curve_rad, right_curve_rad)
+    curvature = (left_curve_rad + right_curve_rad)/2
+    return curvature
 
 def drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzerox, left_lane_inds, right_lane_inds):
     ploty = np.linspace(0, warped.shape[0]-1, warped.shape[0] )
@@ -193,9 +198,10 @@ def drawOnVideo(warped, warped_original, left_line, right_line, nonzeroy, nonzer
     window = np.hstack((left_line_window1, right_line_window2))
     cv2.fillPoly(window_img, np.int_([window]), (0,255, 0))
     return window_img
-    # result = cv2.addWeighted(frame, 1, window_img_transform, 0.3, 0)
-    # plt.imshow(result)
-    # plt.xlim(0, 1280)
-    # plt.ylim(720, 0)
-    # plt.pause(.01)
-    # plt.clf()
+
+def getCarCenter(left_line, right_line, warped):
+    xm_per_pix = 3.7/700
+    l_base = left_line.current_fit[0]*warped.shape[0]**2 + left_line.current_fit[1]*warped.shape[0] + left_line.current_fit[2]
+    r_base = right_line.current_fit[0]*warped.shape[0]**2 + right_line.current_fit[1]*warped.shape[0] + right_line.current_fit[2]
+    car_center = (warped.shape[1]/2 - (l_base + r_base)/2)*xm_per_pix
+    return car_center
