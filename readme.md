@@ -32,14 +32,14 @@ Camera calibration was achieved by utilizing the checkerboard images provided by
 
 The calibration algorithm works by first computing "image points" and "object points" of the checkerboard corners, where object points represent actual dimensions of the checkerboard and image points represent the pixel positions of the checkerboard in the image plane.
 
-This data is computed for a series of images from different camera perspectives, and passed into cv2.calibrateCamera() to find the camera calibration and distortion coefficients. These parameters can then be used with cv2.undistort to undistort and image.
+This data is computed for a series of images from different camera perspectives, and passed into `cv2.calibrateCamera()` to find the camera calibration and distortion coefficients. These parameters can then be used with `cv2.undistort()` to undistort an image.
 
-This calibration only needs to happen once at the beginning of the image processing pipeline. The code can be found in calibration.py. Below is one example of an undistorted checkerboard image.
+This calibration only needs to happen once at the beginning of the image processing pipeline. The code can be found in [calibration.py](calibration.py). Below is one example of an undistorted checkerboard image.
 
 ![Undistorted Checkerboard](Images/Calibration/calibrate2.png)
 
 ##Pipeline
-An image processing pipeline was implemented to process each frame of the provided video. The top-level pipeline implementation can be found in main.py. Each step in the pipeline will be described below.
+An image processing pipeline was implemented to process each frame of the provided video. The top-level pipeline implementation can be found in [main.py](main.py). Each step in the pipeline will be described below.
 
 ###Distortion-corrected Frame
 Each frame in the video must first be corrected for camera distortion using the calibration and distortion coefficients previously calculated. Below is an example of an undistorted test image:
@@ -62,16 +62,16 @@ dst = np.float32([[(img_size[0] / 4), 0],
                   [(img_size[0] * 3 / 4), img_size[1]],
                   [(img_size[0] * 3 / 4), 0]])
 ```
-OpenCV's `getPerspectiveTransform` and `warpPerspective` functions make calculating the perspective transformation matrices and transforming and image very simple. This code can be found in transform.py. Below is an example of a transformed image, in which the red lines represent the coordinates in the real space, and the green lines represent the coordinates in the image plane:
+OpenCV's `getPerspectiveTransform` and `warpPerspective` functions make calculating the perspective transformation matrices and transforming an image very simple. This code can be found in [transform.py](transform.py). Below is an example of a transformed image, in which the red lines represent the coordinates in the real space, and the green lines represent the coordinates in the image plane:
 
 ![Transformed Image](Images/Lane transform tests/transform1/lane_transform1.png)
 
 ###Binary Thresholding
 After perspective transformation to a birds-eye view, the image was processed to identify lane lines. A combination of gradient thresholding and color thresholding was implemented to produce a binary image in which the lane lines were obvious.
 
-In particular, I made use of a sobel operator in the x direction, a threshold on the "S" layer of the image after converting to HLS color space, and a threshold on the gray-scaled image. Additionally, OpenCV's morphology functions were utilized to clean up some of the noise produces from thresholding. The thresholding pipeline can be found in the `thresh_pipeline()` function in the imageProcessing.py file.
+In particular, I made use of a sobel operator in the x direction, a threshold on the "S" layer of the image after converting to HLS color space, and a threshold on the gray-scaled image. Additionally, OpenCV's morphology functions were utilized to clean up some of the noise produced from thresholding. The thresholding pipeline can be found in the `thresh_pipeline()` function in the [imageProcessing.py](imageProcessing.py) file.
 
-Below are subplots showing the thresholding process:
+Below are plots showing the thresholding process:
 ![Thresholded Image](Images/Thresholding/thresh4.png)
 
 ###Polynomial Fitting
@@ -83,7 +83,7 @@ The histogram information is utilized to find max peaks on the left and right si
 
 The sliding window algorithm produces pixel locations of left and right lane lines that can be used in numpy's polyfit() function to produce a polynomial that accurately represents the lane lines. Because of the nature of the problem, after a polynomial has been found, the next frame does not need the full sliding window search as the algorithm should have a starting point that matches the ending point for the previous frame.
 
-In order to smooth the transitions between frames, the polynomial is computed from an average of the previous 15 polynomials. To make this easier to compute, lane line information is stored in a `Line()` object from Line.py. Polynomial fitting and the sliding window approach can be found in lineFinder.py.
+In order to smooth the transitions between frames, the polynomial is computed from an average of the previous 15 polynomials. To make this easier to compute, lane line information is stored in a `Line()` object from [Line.py](Line.py). Polynomial fitting and the sliding window approach can be found in [lineFinder.py](lineFinder.py).
 
 Below is an image showing the sliding window approach and fitted polynomials:
 
@@ -115,10 +115,10 @@ def getCarCenter(left_line, right_line, warped):
     return car_center
 ```
 
-These functions can be found in lineFinder.py.
+These functions can be found in [lineFinder.py](lineFinder.py).
 
 ###Transform Back To Camera Perspective
-At this point, we have all the necessary information to project lane lines back onto the original image. This is achieved by using the same `cv2.warpPerspective()` function with the inverse transformation matrix. `cv2.addWeighted()` is utilized to combine a transparent green lane mask with the original image. The previously calculated lane curvature and position with respect to center is displayed in the top left of the image.
+At this point, we have all the necessary information to project lane lines back onto the original image. This is achieved by using the same `cv2.warpPerspective()` function with the inverse transformation matrix. `cv2.addWeighted()` is utilized to combine a transparent green lane mask with the original image. The previously calculated lane curvature and position with respect to center is displayed in the top left of the image. The transform can be found in [main.py](main.py)
 
 Below is an example of the transform back to camera perspective with a transparent lane:
 
