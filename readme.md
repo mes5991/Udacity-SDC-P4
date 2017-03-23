@@ -13,7 +13,7 @@
 
 
 
-#Udacity SDC Project 4 - Advanced Lane Finding
+# Udacity SDC Project 4 - Advanced Lane Finding
 
 In this project for Udacity's Self-Driving Car Nanodegree, an image processing pipeline was implemented in python to find lanes for highway driving. Given for the project was a video of highway driving from the perspective of a forward facing camera centered on the vehicle. Additionally, checkerboard images taken with the same camera were provided for camera calibration purposes.
 
@@ -27,7 +27,7 @@ The goals / steps of the project were the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-##Camera Calibration
+## Camera Calibration
 Camera calibration was achieved by utilizing the checkerboard images provided by Udacity along with OpenCV's calibrateCamera() function.
 
 The calibration algorithm works by first computing "image points" and "object points" of the checkerboard corners, where object points represent actual dimensions of the checkerboard and image points represent the pixel positions of the checkerboard in the image plane.
@@ -38,15 +38,15 @@ This calibration only needs to happen once at the beginning of the image process
 
 ![Undistorted Checkerboard](Images/Calibration/calibrate2.png)
 
-##Pipeline
+## Pipeline
 An image processing pipeline was implemented to process each frame of the provided video. The top-level pipeline implementation can be found in [main.py](main.py). Each step in the pipeline will be described below.
 
-###Distortion-corrected Frame
+### Distortion-corrected Frame
 Each frame in the video must first be corrected for camera distortion using the calibration and distortion coefficients previously calculated. Below is an example of an undistorted test image:
 
 ![Undistorted Test Image](Images/Calibration/test1.png)
 
-###Perspective Transform
+### Perspective Transform
 After the image has been corrected for camera distortion, it is transformed to a birds-eye view perspective. This is achieved by mapping pixel coordinates in the real space to pixel coordinates in the image plane. Pixel coordinates were chosen based on image size:
 
 ```python
@@ -66,7 +66,7 @@ OpenCV's `getPerspectiveTransform` and `warpPerspective` functions make calculat
 
 ![Transformed Image](Images/Lane transform tests/transform1/lane_transform1.png)
 
-###Binary Thresholding
+### Binary Thresholding
 After perspective transformation to a birds-eye view, the image was processed to identify lane lines. A combination of gradient thresholding and color thresholding was implemented to produce a binary image in which the lane lines were obvious.
 
 In particular, I made use of a sobel operator in the x direction, a threshold on the "S" layer of the image after converting to HLS color space, and a threshold on the gray-scaled image. Additionally, OpenCV's morphology functions were utilized to clean up some of the noise produced from thresholding. The thresholding pipeline can be found in the `thresh_pipeline()` function in the [imageProcessing.py](imageProcessing.py) file.
@@ -74,7 +74,7 @@ In particular, I made use of a sobel operator in the x direction, a threshold on
 Below are plots showing the thresholding process:
 ![Thresholded Image](Images/Thresholding/thresh4.png)
 
-###Polynomial Fitting
+### Polynomial Fitting
 After binary processing has been performed to make lane lines clear, a polynomial was fitted to each lane line. This is achieved by using a sliding window approach as presented in the Udacity lectures. First, a histogram of the binary image is generated:
 
 ![Histogram](Images/Histogram/hist1.png)
@@ -89,7 +89,7 @@ Below is an image showing the sliding window approach and fitted polynomials:
 
 ![Sliding Window](Images/Polynomial/poly1.png)
 
-###Radius of Curvature / Vehicle Position
+### Radius of Curvature / Vehicle Position
 Next, the radius of curvature and vehicle position with respect to center is calculated from the fitted polynomials. This is done simply with the following functions:
 
 ```python
@@ -117,19 +117,19 @@ def getCarCenter(left_line, right_line, warped):
 
 These functions can be found in [lineFinder.py](lineFinder.py).
 
-###Transform Back To Camera Perspective
+### Transform Back To Camera Perspective
 At this point, we have all the necessary information to project lane lines back onto the original image. This is achieved by using the same `cv2.warpPerspective()` function with the inverse transformation matrix. `cv2.addWeighted()` is utilized to combine a transparent green lane mask with the original image. The previously calculated lane curvature and position with respect to center is displayed in the top left of the image. The transform can be found in [main.py](main.py)
 
 Below is an example of the transform back to camera perspective with a transparent lane:
 
 ![Final Output](Images/Final output/output.PNG)
 
-##Video Output
+## Video Output
 The entire video was run through the lane line finding pipeline, and the output was saved.
 
 [Here is a link to my video result](output.avi)
 
-##Discussion
+## Discussion
 In this project a system was implemented in python that heavily utilized OpenCV to identify lane lines in a given image, and for each frame in a video. While my implementation was successful, it is easy to pick out potential areas of failure if it was used in different driving scenarios.
 
 For example, one potential area of failure could be a sharp curve in the road. As my implementation only uses the average of previous polynomials to produce the next polynomial, it might have trouble calculating a sharper curve. The averaged polynomial essentially smooths the polynomial from frame to frame and makes it more resistant to drastic change.
